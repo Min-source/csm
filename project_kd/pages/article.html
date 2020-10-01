@@ -1,0 +1,351 @@
+<!-- 文章管理 -->
+<button id="btn_add" class="btn btn-primary">新增</button>
+<button id="btn_checkdel" class="btn btn-danger">批量删除</button>
+<table class="table">
+  <thead>
+    <tr>
+      <td>选择</td>
+      <td>序号</td>
+      <td>文章标题</td>
+      <td>发布时间</td>
+      <td>审核状态</td>
+      <td>所属栏目</td>
+      <td>文章封面</td>
+      <td>操作</td>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+<!-- 分页 -->
+<div id="myPage"></div>
+<!-- 添加模态框 -->
+<div class="modal" id="add_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content" style="width: 760px;">
+      <div class="modal-header">
+        <h5 class="modal-title">新增文章</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="exampleInputPassword1">文章标题：</label>
+          <input type="text" class="form-control" id="article_title">
+        </div>
+        <div class="form-group">
+          <label for="exampleFormControlSelect1">所属栏目：</label>
+          <select class="form-control" id="category_id">
+            <option></option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="exampleFormControlSelect1">文章封面：</label>
+          <!-- 上传图片 -->
+          <input type="hidden" id="imagepath" name="">
+          <button id='upload_duixiang'>上传</button>
+          <div class="show"></div>
+        </div>
+        <div class="form-group">
+          <label for="exampleFormControlTextarea1">文章内容：</label>
+          <div id="editor">
+            <p>欢迎使用 <b>wangEditor</b> 富文本编辑器</p>
+          </div>
+        </div>
+        <input type="text" id="article_id" style="display: none;">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+        <button type="submit" class="btn btn-primary save_sub">保存并修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 详情模态框 -->
+<div class="modal" id="show_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content" style="width: 800px;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="show_title"></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <!-- <label for="exampleInputPassword1">文章内容：</label> -->
+          <div id='show_content'></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" id="btn_close">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  //设置全局变量token
+  // var token = localStorage.getItem('token');
+  var token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJOUT09Iiwic3ViIjoiYWRtaW4xIiwiaXNzIjoiMDk4ZjZiY2Q0NjIxZDM3M2NhZGU0ZTgzMjYyN2I0ZjYiLCJpYXQiOjE1OTg5MjY5ODUsImF1ZCI6InJlc3RhcGl1c2VyIiwiZXhwIjoxNTk5MDk5Nzg1LCJuYmYiOjE1OTg5MjY5ODV9.vuxi1-avi0e1iqGV0jYoBHz0qMAwu8HFUaGgT0cxLgg'
+  var CategoryCat = [];
+  var article_src;
+  articlesPageQuery(1);//初始化
+  findAllCategory();
+  // 时间戳转日期格式
+  function timestampToTime(timestamp) {
+    var date = new Date(timestamp);//时间戳为10位需*1000，时间戳为13位的话不需乘1000
+    Y = date.getFullYear() + '-';
+    M = (date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1) + '-';
+    D = date.getDate() + ' ';
+    h = date.getHours() + ':';
+    m = (date.getMinutes() < 10 ? '0' + (date.getMinutes()) : date.getMinutes()) + ':';
+    s = (date.getSeconds() < 10 ? '0' + (date.getSeconds()) : date.getSeconds());
+    return Y + M + D + h + m + s;
+  }
+  //分页查询
+  function articlesPageQuery(page) {
+    $.ajax({
+      url: 'http://localhost:7788/article/pageQuery',
+      method: 'get',
+      data: {
+        page: page,
+        pageSize: 3
+      },
+      headers: { 'Authorization': token },
+      success: function (resp) {
+        // console.log(resp.data.list)
+        $('tbody').empty();
+        resp.data.list.forEach(function (item) {
+          var timestamp = item.publishTime;
+          var publishTime = timestampToTime(timestamp);
+          $(`<tr>
+              <td><input type="checkbox" value="`+ item.id + `"></td>
+              <td>`+ item.id + `</td>
+              <td>`+ item.title + `</td>
+              <td>`+ item.publishTime + `</td>
+              <td>`+ item.status + `</td>
+              <td>`+ item.categoryId + `</td>
+              <td><img src="`+ item.source + `" alt="图片丢失" width='30' height='26'></td>
+              <td>
+                <span id='btn_del' style='cursor:pointer'>删除</span>
+                <span id='btn_update' style='cursor:pointer'>修改</span>
+                <span id='btn_show' style='cursor:pointer'>详情</span>
+              </td>
+            </tr>
+          `).appendTo($('tbody'))
+        });
+        // 调用分页插件          
+        $("#myPage").sPage({
+          page: resp.data.page,//当前页码，必填
+          total: resp.data.total,//数据总条数，必填
+          pageSize: 3,//每页显示多少条数据，默认10条
+          totalTxt: "共{total}条",//数据总条数文字描述，{total}为占位符，默认"共{total}条"
+          showTotal: true,//是否显示总条数，默认关闭：false
+          showSkip: true,//是否显示跳页，默认关闭：false
+          showPN: true,//是否显示上下翻页，默认开启：true
+          prevPage: "上一页",//上翻页文字描述，默认“上一页”
+          nextPage: "下一页",//下翻页文字描述，默认“下一页”
+          backFun: function (page) {
+            //点击分页按钮回调函数，返回当前页码
+            // console.log(page);
+            articlesPageQuery(page);
+          }
+        });
+      }
+    })
+  }
+  //获取所属栏目的id
+  function findAllCategory() {
+    $.ajax({
+      url: 'http://localhost:7788/category/findAll',
+      method: 'GET',
+      headers: { 'Authorization': token },
+      success: function (resp) {
+        resp.data.forEach(function (item) {
+          if (item.parentId == null) {
+            CategoryCat.push(item.id);
+            $(`<option value=` + item.id + `>` + item.name + `</option>`).appendTo($('#category_id'));
+          }
+        })
+      }
+    })
+  }
+
+  //新增，保存与修改
+  $('#btn_add').click(function () {
+    //1清空表单
+    $('#article_title').val('');
+    //清空编辑器
+    $('#editor').empty()
+    //2.1初始化编辑器
+    var E = window.wangEditor
+    var editor = new E('#editor')
+    // 或者 var editor = new E( document.getElementById('editor') )
+    editor.create()
+    //2.2初始化图片上传工具
+    //清空图片保存
+    $('.show').empty();
+    a = $("#upload_duixiang").FraUpload({
+      view: ".show", // 视图输出位置
+      url: "http://134.175.100.63:5588/file/upload", // 上传接口
+      fetch: "img", // 视图现在只支持img
+      debug: false, // 是否开启调试模式
+      /* 外部获得的回调接口 */
+      onLoad: function (e) { // 选择文件的回调方法
+        console.log("外部: 初始化完成...");
+      },
+      breforePort: function (e) { // 发送前触发
+        console.log("文件发送之前触发");
+      },
+      successPort: function (e) { // 发送成功触发
+        console.log("文件发送成功");
+        onload_image()
+      },
+      errorPort: function (e) { // 发送失败触发
+        console.log("文件发送失败");
+        onload_image()
+      },
+      deletePost: function (e) { // 删除文件触发
+        console.log("删除文件");
+        console.log(e);
+        alert('删除了' + e.filename)
+        onload_image()
+      },
+      sort: function (e) { // 排序触发
+        console.log("排序");
+        onload_image()
+      },
+    });
+    // 获取图片上传信息
+    function onload_image() {
+      var res = a.FraUpload.show()
+      var ids = [];
+      for (let k in res) {
+        this_val = res[k]
+        if (!empty(res[k]['is_upload']) && !empty(res[k]['ajax'])) {
+          ajax_value = res[k]['ajax'];
+          ids.push(ajax_value.data.id)
+        }
+      }
+      $("#imagepath").val(ids);
+      article_src = res[0].ajax.data
+    }
+    //判断变量是否为空 
+    function empty(value) {
+      if (value == "" || value == undefined || value == null || value == false || value == [] || value == {}) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+    //3加载模态框
+    $('#add_modal').modal('show');
+    //4保存并退出
+    $('.save_sub').click(function () {
+      // 获取表中的数据
+      var id = $('#article_id').val();
+      var title = $('#article_title').val();
+      var categoryId = $('#category_id').val();
+      var content = $('.w-e-text').html();
+      var data;
+      if (id) {
+        data = {
+          id,
+          title,
+          categoryId,
+          content,
+          source: 'http://134.175.100.63:8686/group1/' + article_src.id
+        }
+      } else {
+        data = {
+          title,
+          categoryId,
+          content,
+          source: 'http://134.175.100.63:8686/group1/' + article_src.id
+        }
+      }
+      if (title && categoryId && content) {
+        $.ajax({
+          url: 'http://localhost:7788/article/saveOrUpdate',
+          method: 'post',
+          data: data,
+          headers: { 'Authorization': token },
+          success: function (resp) {
+            articlesPageQuery(1);
+            $('#add_modal').modal('hide');
+            alert(resp.message);
+          }
+        })
+      } else {
+        alert('请输入完整的数据！')
+      }
+    })
+  })
+  //操作
+  $('tbody').on('click', 'span', function () {
+    // console.log(this);
+    switch (this.id) {
+      // 删除
+      case 'btn_del':
+        var id = $(this).closest('tr').find($("input[type=checkbox]")).val();
+        var res = confirm('是否确认删除？')
+        if (res) {
+          $.ajax({
+            url: 'http://localhost:7788/article/deleteById',
+            method: 'get',
+            data: { id: id },
+            headers: { 'Authorization': token },
+            success: function (resp) {
+              alert(resp.message);
+              articlesPageQuery(1);
+            }
+          })
+        } else {
+          console.log('取消删除')
+        }
+        break;
+      //修改
+      case 'btn_update':
+        //模态框显示原数据
+        $('#article_id').val($(this).closest('tr')[0].children[1].innerText)
+        $('#article_title').val($(this).closest('tr')[0].children[2].innerText);
+        $('#category_id').val($(this).closest('tr')[0].children[5].innerText);
+        $('#imagepath').val($(this).closest('tr')[0].children[6].innerText)
+        // var id = $(this).closest('tr').find($("input[type=checkbox]")).val();
+        // $('#article_id').val(id)
+        $('#add_modal').modal('show');
+        //实现与新增按钮的公用ajax，数据交互绑定在模态框的保存并退出按钮上。
+        //清空编辑器
+        $('#editor').empty()
+        //初始化编辑器
+        var E = window.wangEditor
+        var editor = new E('#editor')
+        // 或者 var editor = new E( document.getElementById('editor') )
+        editor.create()
+        break;
+      //详情  
+      case 'btn_show':
+        var id = $(this).closest('tr').find($("input[type=checkbox]")).val();
+        // console.log(id);
+        $.ajax({
+          url: 'http://localhost:7788/article/findById',
+          method: 'get',
+          data: { id: id },
+          headers: { 'Authorization': token },
+          success: function (resp) {
+            // console.log(resp.data);
+            $('#show_title').html(resp.data.title);
+            $('#show_content').html(resp.data.content);
+            $('#show_modal').modal('show');
+            $('#btn_close').click(function () {
+              $('#show_modal').modal('hide');
+            })
+          }
+        })
+        break;
+      default:
+        break;
+    }
+  })
+</script>
